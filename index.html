@@ -1,0 +1,243 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8" />
+    <title>Phaser xD</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+
+    var config = {
+        type: Phaser.AUTO,
+        width: 1600,
+        height: 900,
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 490 },
+                debug: false
+            }
+        },
+        scene: {
+            preload: preload,
+            create: create,
+            update: update
+            }
+        };
+        
+    var player;
+    var platforms;
+    var coinpick;
+    var cursors;
+    var score = 0;
+    var scoreText;
+    var gameOver;
+
+
+    var game = new Phaser.Game(config);
+
+    function preload ()
+{
+    
+    this.load.image('fondo', 'assets/fondo.png');
+    this.load.image('ground', 'assets/platform.png');
+    this.load.image('suelo', 'assets/suelo.png');
+    this.load.image('derecha', 'assets/derecha.png');
+    this.load.image('izquierda', 'assets/izquierda.png');
+    this.load.image('bomb', 'assets/bola.png');
+    this.load.spritesheet('dude', 'assets/dudeknight.png',{ frameWidth:90, frameHeight: 75 });
+    this.load.spritesheet('coinsprite', 'assets/coin.png',{ frameWidth:32, frameHeight: 32 });
+    //this.load.sound('soundcoin', 'assets/coinseffect.mp3');
+    this.load.audio("soundcoin", ["assets/coinseffect.mp3"]);
+}
+
+    function create ()
+    {
+        this.add.image(830, 375, 'fondo');
+        this.coinpick = this.sound.add("soundcoin");
+
+        platforms = this.physics.add.staticGroup();
+
+        platforms.create(832, 870, 'suelo').setScale(1).refreshBody();
+
+        platforms.create(1529, 230, 'ground');
+        platforms.create(80, 230, 'ground');
+
+        platforms.create(555, 445, 'ground');
+        platforms.create(1041, 445, 'ground');
+
+        platforms.create(80, 645, 'ground');
+        platforms.create(1250, 645, 'ground');
+        platforms.create(1041, 645, 'ground');
+
+        platforms.create(208, 645, 'derecha');
+        platforms.create(208, 230, 'derecha');
+        platforms.create(1378, 645, 'derecha');
+        platforms.create(660, 445, 'derecha');
+        platforms.create(1050, 445, 'derecha');
+        platforms.create(1150, 445, 'derecha');
+        platforms.create(660, 230, 'derecha');
+        platforms.create(635, 230, 'derecha');
+
+        platforms.create(912, 645, 'izquierda');
+        platforms.create(560, 230, 'izquierda');
+        platforms.create(590, 230, 'izquierda');
+        platforms.create(1400, 230, 'izquierda');
+        platforms.create(912, 445, 'izquierda');
+        platforms.create(426, 445, 'izquierda');
+        
+        
+        player = this.physics.add.sprite(600, 750, 'dude');
+
+        player.setBounce(0.2);
+        player.setCollideWorldBounds(true);
+
+        this.anims.create({
+            key: 'left',
+            frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 5 }),
+            frameRate: 10,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'turn',
+            frames: [ { key: 'dude', frame: 6 } ],
+            frameRate: 20
+        });
+
+        this.anims.create({
+            key: 'right',
+            frames: this.anims.generateFrameNumbers('dude', { start: 7, end: 12 }),
+            frameRate: 10,
+            repeat: -1
+        });
+
+        cursors = this.input.keyboard.createCursorKeys();
+
+        this.anims.create({
+            key: 'spin',
+            frames: this.anims.generateFrameNumbers('coinsprite', {
+                start: 0, end: 26}),
+                framerate: 2,
+                repeat: -1
+        });
+
+        coins = this.physics.add.group({
+            key: 'coinsprite',
+            repeat: 12,
+            setXY: { x: 41, y: 0, stepX: 128 }
+        });
+
+        coins.children.iterate(coin => {
+            coin.play('spin')})
+
+        coins.children.iterate(function (child) {
+
+            child.setBounceY(Phaser.Math.FloatBetween(0.3, 0.5));
+
+        });
+
+        scoreText = this.add.text(16, 16, 'Puntuacion: 0', { fontSize: '36px', fill: '#000' });
+
+        bombs = this.physics.add.group();
+        this.physics.add.collider(bombs, platforms);
+        this.physics.add.collider(player, bombs, hitBomb, null, this);
+        this.physics.add.collider(player, platforms);
+        this.physics.add.collider(coins, platforms);
+
+        this.physics.add.overlap(player, coins, collectCoins, null, this);
+    }       
+
+    function update ()
+    {
+        if (gameOver){
+            return;
+        }
+
+        if (cursors.left.isDown)
+        {
+            player.setVelocityX(-320);
+
+            player.anims.play('left', true);
+        }
+        else if (cursors.right.isDown)
+        {
+            player.setVelocityX(320);
+
+            player.anims.play('right', true);
+        }
+        else
+        {
+            player.setVelocityX(0);
+
+            player.anims.play('turn', true);
+        }
+
+        if (cursors.up.isDown && player.body.touching.down)
+        {
+            player.setVelocityY(-480);
+        }
+        if (cursors.down.isDown)
+        {
+            player.setVelocityY(400);
+        }
+        
+    }
+
+    function collectCoins (player, coinsprite, coinpick){
+    coinsprite.disableBody(true, true);
+    this.coinpick.play();
+
+    score += 10;
+    scoreText.setText('Puntuacion: ' + score);
+    if (coins.countActive(true) === 0)
+    {
+        coins.children.iterate(function (child) {
+
+            child.enableBody(true, child.x, 0, true, true);
+
+        });
+
+        var x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400);
+
+        var bomb = bombs.create(x, 16, 'bomb');
+        bomb.setBounce(1);
+        bomb.setCollideWorldBounds(true);
+        bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+
+    }
+    }
+
+    function hitBomb (player, bomb)
+    {
+        this.physics.pause();
+
+        player.setTint(0xff0000);
+
+        player.anims.play('turn');
+
+        gameOver = true;
+
+    this.input.keyboard.on('keydown_R', function(event){
+            this.scene.restart();
+            gameOver=false;
+            score = 0;
+        }, this);
+    }
+    function clearGameCache () {
+    game.cache = new Phaser.Cache(game);
+    game.load.reset();
+    game.load.removeAll();
+}
+
+</script>
+
+</body>
+</html>
